@@ -2,9 +2,8 @@ import sys
 
 import click
 
+from pylox.error import HAD_ERROR
 from pylox.scanner import Scanner
-
-HAD_ERROR = False  # noqa: F841
 
 
 @click.command()
@@ -35,14 +34,3 @@ def run(source: str):
     # print tokens to the console
     for token in tokens:
         click.echo(token)
-
-
-def error(line: int, message: str):
-    # error utility function
-    report(line, "", message)
-
-
-def report(line: int, where: str, message: str):
-    # report error to stderr
-    click.echo(f"[line {line}] Error {where}: {message}", err=True)
-    HAD_ERROR = True
