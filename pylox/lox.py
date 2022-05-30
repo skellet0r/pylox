@@ -16,6 +16,9 @@ class Lox:
         """Run the pylox interactive prompt."""
         while True:
             self.run(input("> "))
+            for exc in self.exception_list:
+                click.echo(exc)
+            self.exception_list.clear()
 
     def run_script(self, script: TextIO):
         """Run a script file."""
@@ -23,7 +26,7 @@ class Lox:
         self.exception_list.raise_if_not_empty()
 
     def run(self, source: str):
-        lexer = Lexer(source)
+        lexer = Lexer(source, self.exception_list)
         tokens = lexer.scan()
 
         for token in tokens:
