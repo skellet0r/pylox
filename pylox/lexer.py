@@ -24,7 +24,6 @@ class Lexer:
                 self.scan_token()
             except LexicalError as e:
                 self.exception_list.append(e)
-                self._current += 1
 
         # the last token should be the EOF
         if len(self.tokens) != 0 and self.tokens[-1].token_type is not TokenType.EOF:
