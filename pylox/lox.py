@@ -1,8 +1,13 @@
 from typing import Optional, TextIO
 
+from pylox.exceptions import ExceptionList
+
 
 class Lox:
     """Lox interpreter"""
+
+    def __init__(self):
+        self.exception_list = ExceptionList()
 
     def run_prompt(self):
         """Run the pylox interactive prompt."""
@@ -12,6 +17,7 @@ class Lox:
     def run_script(self, script: TextIO):
         """Run a script file."""
         self.run(script.read())
+        self.exception_list.raise_if_not_empty()
 
     def run(self, source: str):
         pass
