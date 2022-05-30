@@ -58,10 +58,14 @@ class Lexer:
                 self._lineno += 1
             # one or two character tokens
             case "!":
+                # default to single character token
                 token_type = TokenType.BANG
                 if self.peek() == "=":
+                    # if the next token is '=' char type is different
                     token_type = TokenType.BANG_EQUAL
+                    # increment the counter
                     self._current += 1
+                # add the token either one or two character
                 self.add_token(token_type)
             case "=":
                 token_type = TokenType.EQUAL
@@ -81,6 +85,16 @@ class Lexer:
                     token_type = TokenType.GREATER_EQUAL
                     self._current += 1
                 self.add_token(token_type)
+            # special case
+            case "/":
+                # '/' can be followed by another '/' to represent a comment
+                # in which case the rest of the line from that point is a comment
+                if self.peek() == "/":
+                    # '\0' represents a EOF
+                    while self.peek() not in ["\n", "\0"]:
+                        self._current += 1
+                else:
+                    self.add_token(TokenType.SLASH)
 
     def consume(self) -> str:
         char = self.source[self._current]
