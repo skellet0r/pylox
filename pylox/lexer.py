@@ -101,6 +101,22 @@ class Lexer:
                     # '\0' represents a EOF
                     while self.peek() not in ["\n", "\0"]:
                         self._current += 1
+                elif self.peek() == "*":
+                    # handle multi-line comments
+                    start_lineno = self._lineno  # cache our starting line no
+                    self._current += 1  # increment by 1 to prevent /*/ from being treated as end
+                    # keep incrementing until we see '*/' or '\0' <- EOF
+                    while f"{self.peek()}{self.peek(1)}" != "*/" and self.peek() != "\0":
+                        if self.peek() == "\n":
+                            self._lineno += 1
+                        self._current += 1
+
+                    # if we see an EOF under the cursor that means we haven't terminated our comment
+                    if self.peek() == "\0":
+                        raise LexicalError(start_lineno, "", "Unterminated multi-line comment")
+
+                    # increment by 2 since we are consuming '*/'
+                    self._current += 2
                 else:
                     self.add_token(TokenType.SLASH)
             case '"':
