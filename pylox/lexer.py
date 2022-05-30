@@ -1,5 +1,7 @@
+import string
+
 from pylox.exceptions import ExceptionList, LexicalError
-from pylox.token import Token, TokenType
+from pylox.token import RESERVED_TOKENS, Token, TokenType
 
 
 class Lexer:
@@ -121,6 +123,44 @@ class Lexer:
                 self._current += 1
                 value = self.source[self._start + 1 : self._current - 1]
                 self.add_token(TokenType.STRING, value)
+            case _:
+                # default case handle number literals and identifiers
+                if self.is_digit(char):
+                    # numbers
+                    while self.is_digit(self.peek()):
+                        self._current += 1
+                    # handle floats
+                    if self.peek() == "." and self.is_digit(self.peek(1)):
+                        self._current += 1
+                        while self.is_digit(self.peek()):
+                            self._current += 1
+
+                    value = self.source[self._start : self._current]
+                    self.add_token(TokenType.NUMBER, float(value))
+                elif self.is_alpha(char):
+                    # handle reserved keywords and user identifiers
+                    while self.is_alpha_numeric(self.peek()):
+                        self._current += 1
+
+                    value = self.source[self._start : self._current]
+                    token_type = TokenType.IDENTIFIER
+                    if value in [word.lower() for word in RESERVED_TOKENS]:
+                        token_type = getattr(TokenType, value.upper())
+                    self.add_token(token_type)
+                else:
+                    # raise error for unexpected characters
+                    raise LexicalError(self._lineno, "", "Unexpected character")
+
+    @staticmethod
+    def is_alpha(char: str) -> bool:
+        return char in string.ascii_letters or char == "_"
+
+    @staticmethod
+    def is_digit(char: str) -> bool:
+        return char in string.digits
+
+    def is_alpha_numeric(self, char: str) -> bool:
+        return self.is_alpha(char) or self.is_digit(char)
 
     def consume(self) -> str:
         char = self.source[self._current]
