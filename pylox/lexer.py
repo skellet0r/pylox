@@ -56,11 +56,41 @@ class Lexer:
             case "\n":
                 # newline increment line number
                 self._lineno += 1
+            # one or two character tokens
+            case "!":
+                token_type = TokenType.BANG
+                if self.peek() == "=":
+                    token_type = TokenType.BANG_EQUAL
+                    self._current += 1
+                self.add_token(token_type)
+            case "=":
+                token_type = TokenType.EQUAL
+                if self.peek() == "=":
+                    token_type = TokenType.EQUAL_EQUAL
+                    self._current += 1
+                self.add_token(token_type)
+            case "<":
+                token_type = TokenType.LESS
+                if self.peek() == "=":
+                    token_type = TokenType.LESS_EQUAL
+                    self._current += 1
+                self.add_token(token_type)
+            case ">":
+                token_type = TokenType.GREATER
+                if self.peek() == "=":
+                    token_type = TokenType.GREATER_EQUAL
+                    self._current += 1
+                self.add_token(token_type)
 
     def consume(self) -> str:
         char = self.source[self._current]
         self._current += 1
         return char
+
+    def peek(self, n: int = 0) -> str:
+        if (idx := self._current + n) < len(self.source) and idx > -1:
+            return self.source[idx]
+        return "\0"
 
     def add_token(self, token_type: TokenType, literal: object = None):
         token = Token(token_type, self.source[self._start : self._current], literal, self._lineno)
