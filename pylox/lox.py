@@ -1,36 +1,25 @@
-import sys
-
-import click
-
-from pylox.error import HAD_ERROR
-from pylox.scanner import Scanner
+from typing import Optional, TextIO
 
 
-@click.command()
-@click.argument("file", type=click.File(), required=False)
-def main(file: click.File):
-    # entrypoint for the pylox interpreter
-    if file is None:
-        # interactive interpreter
+class Lox:
+    """Lox interpreter"""
+
+    def run_prompt(self):
+        """Run the pylox interactive prompt."""
         while True:
-            # header message
-            click.echo("Pylox 0.1.0 Interactive Prompt")
-            # run each line
-            run(input("> "))
-    else:
-        # execute entire file
-        run(file.read())
-        if HAD_ERROR:
-            # exit with a non-zero exit code
-            sys.exit(65)
+            self.run(input("> "))
 
+    def run_script(self, script: TextIO):
+        """Run a script file."""
+        self.run(script.read())
 
-def run(source: str):
-    # scan the source code
-    scanner = Scanner(source)
-    # collect all the tokens in a list
-    tokens = scanner.scan_tokens()
+    def run(self, source: str):
+        pass
 
-    # print tokens to the console
-    for token in tokens:
-        click.echo(token)
+    @classmethod
+    def main(cls, script: Optional[TextIO]):
+        """Run either the interactive prompt or a file."""
+        if script is None:
+            cls().run_prompt()
+        else:
+            cls().run_script(script)
