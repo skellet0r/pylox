@@ -1,13 +1,16 @@
 from typing import Optional, TextIO
 
+import click
+
 from pylox.exceptions import ExceptionList
+from pylox.lexer import Lexer
 
 
 class Lox:
     """Lox interpreter"""
 
     def __init__(self):
-        self.exception_list = ExceptionList()
+        self.exception_list = ExceptionList([])
 
     def run_prompt(self):
         """Run the pylox interactive prompt."""
@@ -20,7 +23,11 @@ class Lox:
         self.exception_list.raise_if_not_empty()
 
     def run(self, source: str):
-        pass
+        lexer = Lexer(source)
+        tokens = lexer.scan()
+
+        for token in tokens:
+            click.echo(token)
 
     @classmethod
     def main(cls, script: Optional[TextIO]):
