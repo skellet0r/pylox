@@ -103,12 +103,26 @@ class Lexer:
                         self._current += 1
                 elif self.peek() == "*":
                     # handle multi-line comments
-                    start_lineno = self._lineno  # cache our starting line no
                     self._current += 1  # increment by 1 to prevent /*/ from being treated as end
+                    start_lineno = self._lineno  # cache our starting line no
+                    nesting = 1
                     # keep incrementing until we see '*/' or '\0' <- EOF
-                    while f"{self.peek()}{self.peek(1)}" != "*/" and self.peek() != "\0":
+                    while (
+                        (next_two := f"{self.peek()}{self.peek(1)}") != "*/" or nesting > 1
+                    ) and self.peek() != "\0":
                         if self.peek() == "\n":
                             self._lineno += 1
+
+                        if next_two == "/*":
+                            nesting += 1
+                            self._current += 2
+                            continue
+
+                        if next_two == "*/":
+                            nesting -= 1
+                            self._current += 2
+                            continue
+
                         self._current += 1
 
                     # if we see an EOF under the cursor that means we haven't terminated our comment
