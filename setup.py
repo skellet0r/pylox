@@ -19,7 +19,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "pylox = pylox.lox:main",
+            "pylox = pylox.__main__:main",
         ],
     },
 )
