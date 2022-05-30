@@ -14,7 +14,7 @@ class ExceptionList(UserList):
             case _:
                 error_msg = ["Multiple exceptions occurred."]
                 error_msg += [f"{type(exc).__name__}: {exc}" for exc in self.data[::-1]]
-                raise PyloxException(error_msg)
+                raise PyloxException("\n".join(error_msg))
 
 
 class PyloxException(Exception):
