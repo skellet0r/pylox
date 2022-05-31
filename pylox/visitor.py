@@ -1,4 +1,4 @@
-from pylox.parser import expr
+from pylox import expr
 
 
 class ASTPrinter:
