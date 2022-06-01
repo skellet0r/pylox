@@ -31,7 +31,7 @@ class Lox:
         lexer = Lexer(source, self.exception_list)
         tokens = lexer.scan()
 
-        parser = Parser(tokens)
+        parser = Parser(tokens, self.exception_list)
         expr = parser.parse()
         if expr is None:
             return
