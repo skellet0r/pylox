@@ -1,5 +1,7 @@
 from collections import UserList
 
+from pylox.token import Token, TokenType
+
 
 class ExceptionList(UserList):
     def __init__(self, data):
@@ -32,3 +34,14 @@ class LexicalError(PyloxException):
 
     def __str__(self) -> str:
         return f"[Line {self.lineno}] Error{self.where}: {self.message}"
+
+
+class SyntacticalError(PyloxException):
+    def __init__(self, token: Token, msg: str):
+        self.token = token
+        self.msg = msg
+
+    def __str__(self) -> str:
+        if self.token.token_type is TokenType.EOF:
+            return f"[Line {self.token.lineno}] Error at end: {self.msg}"
+        return f"[Line {self.token.lineno}] Error at {self.token.lexeme}: {self.msg}"
