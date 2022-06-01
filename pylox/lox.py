@@ -4,6 +4,8 @@ import click
 
 from pylox.exceptions import ExceptionList
 from pylox.lexer import Lexer
+from pylox.parser import Parser
+from pylox.visitor import ASTPrinter
 
 
 class Lox:
@@ -29,8 +31,12 @@ class Lox:
         lexer = Lexer(source, self.exception_list)
         tokens = lexer.scan()
 
-        for token in tokens:
-            click.echo(token)
+        parser = Parser(tokens)
+        expr = parser.parse()
+        if expr is None:
+            return
+
+        click.echo(ASTPrinter().print(expr))
 
     @classmethod
     def main(cls, script: Optional[TextIO]):
