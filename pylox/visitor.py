@@ -2,7 +2,7 @@ from pylox import expr
 
 
 class ASTPrinter:
-    def print(self, expr: expr.BaseExpr):
+    def print(self, expr: expr.BaseExpr) -> str:
         return expr.accept(self)
 
     def visitBinaryExpr(self, expr: expr.BinaryExpr) -> str:
