@@ -1,135 +1,118 @@
+from typing import Optional
+
+from pylox.exceptions import ExceptionList, SyntacticalError
 from pylox.expr import BaseExpr, BinaryExpr, GroupingExpr, LiteralExpr, UnaryExpr
 from pylox.token import Token, TokenType
 
 
 class Parser:
-    def __init__(self, tokens: list[Token]):
+    def __init__(self, tokens: list[Token], exception_list: ExceptionList):
         self.tokens = tokens
+        self.exception_list = exception_list
 
         self._current = 0
 
     def parse(self) -> BaseExpr:
         try:
             return self.expression()
-        except SyntaxError:
+        except SyntacticalError as e:
+            self.exception_list.append(e)
             return None
 
-    def expression(self):
-        return self.equality()
+    def peek(self, n: int = 0) -> Optional[Token]:
+        if (idx := self._current + n) >= 0 and idx < len(self.tokens):
+            return self.tokens[idx]
+        return None
 
-    def equality(self) -> BaseExpr:
-        expr = self.comparison()
+    def consume(self) -> Token:
+        self._current += 1
+        return self.peek(-1)
 
-        while self.match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL):
-            operator = self.previous()
-            right = self.comparison()
+    def expression(self) -> BaseExpr:
+        return self.equality(self.consume())
+
+    def equality(self, token: Token) -> BaseExpr:
+        expr = self.comparison(token)
+
+        while self.peek().token_type in [TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL]:
+            operator = self.consume()
+            right = self.comparison(self.consume())
             expr = BinaryExpr(expr, operator, right)
 
         return expr
 
-    def comparison(self) -> BaseExpr:
-        expr = self.term()
+    def comparison(self, token: Token) -> BaseExpr:
+        expr = self.term(token)
 
-        while self.match(
-            TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL
-        ):
-            operator = self.previous()
-            right = self.term()
+        while self.peek().token_type in [
+            TokenType.GREATER,
+            TokenType.GREATER_EQUAL,
+            TokenType.LESS,
+            TokenType.LESS_EQUAL,
+        ]:
+            operator = self.consume()
+            right = self.term(self.consume())
             expr = BinaryExpr(expr, operator, right)
 
         return expr
 
-    def term(self) -> BaseExpr:
-        expr = self.factor()
+    def term(self, token: Token) -> BaseExpr:
+        expr = self.factor(token)
 
-        while self.match(TokenType.MINUS, TokenType.PLUS):
-            operator = self.previous()
-            right = self.factor()
+        while self.peek().token_type in [TokenType.MINUS, TokenType.PLUS]:
+            # token under the cursor is a '+' or '-' operator
+            operator = self.consume()
+            right = self.unary(self.consume())
             expr = BinaryExpr(expr, operator, right)
 
         return expr
 
-    def factor(self) -> BaseExpr:
-        expr = self.unary()
+    def factor(self, token: Token) -> BaseExpr:
+        expr = self.unary(token)
 
-        while self.match(TokenType.SLASH, TokenType.STAR):
-            operator = self.previous()
-            right = self.unary()
+        while self.peek().token_type in [TokenType.SLASH, TokenType.STAR]:
+            # token under the cursor is a '/' or '*' operator
+            operator = self.consume()
+            right = self.unary(self.consume())
             expr = BinaryExpr(expr, operator, right)
 
         return expr
 
-    def unary(self) -> BaseExpr:
-        if self.match(TokenType.BANG, TokenType.MINUS):
-            operator = self.previous()
-            right = self.unary()
-            return UnaryExpr(operator, right)
+    def unary(self, token: Token) -> BaseExpr:
+        if token.token_type in [TokenType.BANG, TokenType.MINUS]:
+            # token is an '!' or '-' operator
+            right = self.unary(self.consume())
+            return UnaryExpr(token, right)
 
-        return self.primary()
+        # token is not an operator so must be a primary
+        return self.primary(token)
 
-    def primary(self) -> BaseExpr:
-        if self.match(TokenType.FALSE):
-            return LiteralExpr(False)
-        elif self.match(TokenType.TRUE):
-            return LiteralExpr(True)
-        elif self.match(TokenType.NIL):
-            return LiteralExpr(None)
-        elif self.match(TokenType.NUMBER, TokenType.STRING):
-            return LiteralExpr(self.previous().literal)
-        elif self.match(TokenType.LEFT_PAREN):
-            expr = self.expression()
-            self.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression.")
-            return GroupingExpr(expr)
-
-        raise self.error(self.peek(), "Expect expression.")
-
-    def match(self, *token_types: list[TokenType]) -> bool:
-        for token_type in token_types:
-            if self.check(token_type):
-                self.advance()
-                return True
-
-        return False
-
-    def check(self, token_type: TokenType) -> bool:
-        if self.is_at_end:
-            return False
-        return self.peek().token_type is token_type
-
-    def advance(self):
-        if not self.is_at_end:
-            self._current += 1
-        return self.previous()
-
-    @property
-    def is_at_end(self):
-        return self.peek().token_type is TokenType.EOF
-
-    def peek(self) -> Token:
-        return self.tokens[self._current]
-
-    def previous(self) -> Token:
-        return self.tokens[self._current - 1]
-
-    def consume(self, token_type: TokenType, message: str) -> Token:
-        if self.check(token_type):
-            return self.advance()
-
-        raise self.error(self.peek(), message)
-
-    def error(self, token: Token, msg: str):
-        if token.token_type is TokenType.EOF:
-            print(token.lineno, " at end", msg)
-        else:
-            print(token.lineno, " at '", token.lexeme, "'", msg)
-
-        return SyntaxError()
+    def primary(self, token: Token) -> BaseExpr:
+        """Highest precendence, bottom of grammar productions."""
+        match token.token_type:
+            case TokenType.FALSE:
+                return LiteralExpr(False)
+            case TokenType.TRUE:
+                return LiteralExpr(True)
+            case TokenType.NIL:
+                return LiteralExpr(None)
+            case TokenType.NUMBER | TokenType.STRING:
+                return LiteralExpr(token.literal)
+            case TokenType.LEFT_PAREN:
+                expr = self.expression()
+                if (next_token := self.peek()).token_type is not TokenType.RIGHT_PAREN:
+                    raise SyntacticalError(next_token, "Expected ')' after expression.")
+                self._current += 1  # consume the ')'
+                return GroupingExpr(expr)
+            case _:
+                raise SyntacticalError(token, "Expected expression.")
 
     def synchronize(self):
-        self.advance()
+        if self.peek().token_type is not TokenType.EOF:
+            self._current += 1
 
-        while not self.is_at_end:
-            if self.previous().token_type is TokenType:
+        while self.peek().token_type is not TokenType.EOF:
+            if self.peek(-1).token_type is TokenType.SEMICOLON:
                 return
 
             if self.peek().token_type in [
@@ -144,4 +127,4 @@ class Parser:
             ]:
                 return
 
-            self.advance()
+            self._current += 1  # consume the token
