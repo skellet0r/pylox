@@ -44,4 +44,4 @@ class SyntacticalError(PyloxException):
     def __str__(self) -> str:
         if self.token.token_type is TokenType.EOF:
             return f"[Line {self.token.lineno}] Error at end: {self.msg}"
-        return f"[Line {self.token.lineno}] Error at {self.token.lexeme}: {self.msg}"
+        return f"[Line {self.token.lineno}] Error at '{self.token.lexeme}': {self.msg}"
