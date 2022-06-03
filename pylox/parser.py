@@ -57,12 +57,12 @@ class Parser:
         return expr
 
     def term(self, token: Token) -> BaseExpr:
-        expr = self.factor(token)
+        expr = self.factor(token)  # 4
 
         while self.peek().token_type in [TokenType.MINUS, TokenType.PLUS]:
             # token under the cursor is a '+' or '-' operator
             operator = self.consume()
-            right = self.unary(self.consume())
+            right = self.factor(self.consume())
             expr = BinaryExpr(expr, operator, right)
 
         return expr
