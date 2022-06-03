@@ -45,3 +45,9 @@ class SyntacticalError(PyloxException):
         if self.token.token_type is TokenType.EOF:
             return f"[Line {self.token.lineno}] Error at end: {self.msg}"
         return f"[Line {self.token.lineno}] Error at '{self.token.lexeme}': {self.msg}"
+
+
+class PyloxRuntimeError(PyloxException):
+    def __init__(self, token: Token, msg: str):
+        self.token = token
+        self.msg = msg

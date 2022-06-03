@@ -3,9 +3,9 @@ from typing import Optional, TextIO
 import click
 
 from pylox.exceptions import ExceptionList
+from pylox.interpreter import Interpreter
 from pylox.lexer import Lexer
 from pylox.parser import Parser
-from pylox.visitor import ASTPrinter
 
 
 class Lox:
@@ -33,10 +33,10 @@ class Lox:
 
         parser = Parser(tokens, self.exception_list)
         expr = parser.parse()
-        if expr is None:
-            return
 
-        click.echo(ASTPrinter().print(expr))
+        interpreter = Interpreter(self.exception_list)
+        val = interpreter.interpret(expr)
+        click.echo(val)
 
     @classmethod
     def main(cls, script: Optional[TextIO]):
