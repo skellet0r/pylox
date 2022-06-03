@@ -30,3 +30,14 @@ class LiteralExpr(BaseExpr):
 class UnaryExpr(BaseExpr):
     operator: Token
     right: BaseExpr
+
+
+@dataclass(slots=True)
+class VariableExpr(BaseExpr):
+    name: Token
+
+
+@dataclass(slots=True)
+class AssignExpr(BaseExpr):
+    name: Token
+    value: BaseExpr

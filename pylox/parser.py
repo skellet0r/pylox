@@ -1,7 +1,16 @@
 from typing import Optional
 
 from pylox.exceptions import ExceptionList, SyntacticalError
-from pylox.expr import BaseExpr, BinaryExpr, GroupingExpr, LiteralExpr, UnaryExpr
+from pylox.expr import (
+    AssignExpr,
+    BaseExpr,
+    BinaryExpr,
+    GroupingExpr,
+    LiteralExpr,
+    UnaryExpr,
+    VariableExpr,
+)
+from pylox.stmt import BaseStmt, BlockStmt, ExpressionStmt, PrintStmt, VarStmt
 from pylox.token import Token, TokenType
 
 
@@ -12,12 +21,12 @@ class Parser:
 
         self._current = 0
 
-    def parse(self) -> BaseExpr:
-        try:
-            return self.expression()
-        except SyntacticalError as e:
-            self.exception_list.append(e)
-            return None
+    def parse(self) -> list[BaseStmt]:
+        statements: list[BaseStmt] = []
+        while self.peek().token_type is not TokenType.EOF:
+            statements.append(self.declaration())
+
+        return statements
 
     def peek(self, n: int = 0) -> Optional[Token]:
         if (idx := self._current + n) >= 0 and idx < len(self.tokens):
@@ -28,8 +37,84 @@ class Parser:
         self._current += 1
         return self.peek(-1)
 
-    def expression(self) -> BaseExpr:
-        return self.equality(self.consume())
+    def declaration(self) -> BaseStmt:
+        try:
+            if (token := self.consume()).token_type is TokenType.VAR:
+                return self.var_declaration(self.consume())
+            else:
+                return self.statement(token)
+        except SyntacticalError as e:
+            self.exception_list.append(e)
+            self.synchronize()
+
+    def var_declaration(self, name_token: Token) -> BaseStmt:
+        if name_token.token_type is not TokenType.IDENTIFIER:
+            raise SyntacticalError(name_token, "Expected variable name.")
+
+        initializer = None
+        if self.peek().token_type is TokenType.EQUAL:
+            self._current += 1  # consume '='
+            initializer = self.expression(self.consume())
+
+        if (next_token := self.peek()).token_type is not TokenType.SEMICOLON:
+            raise SyntacticalError(next_token, "Expected ';' after variable declaration")
+        self._current += 1  # consume ';'
+        return VarStmt(name_token, initializer)
+
+    def statement(self, token: Token) -> BaseStmt:
+        if token.token_type is TokenType.PRINT:
+            return self.print_statement(self.consume())
+
+        if token.token_type is TokenType.LEFT_BRACE:
+            return BlockStmt(self.block_statement())
+
+        return self.expression_statement(token)
+
+    def block_statement(self) -> list[BaseStmt]:
+        statements = []
+
+        while self.peek().token_type is not TokenType.RIGHT_BRACE:
+            statements.append(self.declaration())
+
+        if (token := self.peek()).token_type is not TokenType.RIGHT_BRACE:
+            raise SyntacticalError(token, "Expected '}' after block.")
+
+        self._current += 1  # consume '}'
+        return statements
+
+    def print_statement(self, token: Token) -> BaseStmt:
+        value = self.expression(token)
+        if (next_token := self.peek()).token_type is not TokenType.SEMICOLON:
+            raise SyntacticalError(next_token, "Expected ';' after value.")
+        else:
+            self._current += 1  # consume the semicolon
+        return PrintStmt(value)
+
+    def expression_statement(self, token: Token) -> BaseStmt:
+        value = self.expression(token)
+        if (next_token := self.peek()).token_type is not TokenType.SEMICOLON:
+            raise SyntacticalError(next_token, "Expected ';' after value.")
+        else:
+            self._current += 1  # consume the semicolon
+        return ExpressionStmt(value)
+
+    def expression(self, token: Token) -> BaseExpr:
+        return self.assignment(token)
+
+    def assignment(self, token: Token) -> BaseExpr:
+        expr = self.equality(token)
+
+        if (next_token := self.peek()).token_type is TokenType.EQUAL:
+            equals = self.consume()
+            value = self.assignment(self.consume())
+
+            if isinstance(expr, VariableExpr):
+                name = expr.name
+                return AssignExpr(name, value)
+
+            raise SyntacticalError(equals, "Invalid assignment target.")
+
+        return expr
 
     def equality(self, token: Token) -> BaseExpr:
         expr = self.comparison(token)
@@ -104,6 +189,8 @@ class Parser:
                     raise SyntacticalError(next_token, "Expected ')' after expression.")
                 self._current += 1  # consume the ')'
                 return GroupingExpr(expr)
+            case TokenType.IDENTIFIER:
+                return VariableExpr(token)
             case _:
                 raise SyntacticalError(token, "Expected expression.")
 

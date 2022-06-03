@@ -1,20 +1,58 @@
 import math
 
+import click
+
+from pylox.environment import Environment
 from pylox.exceptions import ExceptionList, PyloxRuntimeError
-from pylox.expr import BaseExpr, BinaryExpr, GroupingExpr, LiteralExpr, UnaryExpr
+from pylox.expr import (
+    AssignExpr,
+    BaseExpr,
+    BinaryExpr,
+    GroupingExpr,
+    LiteralExpr,
+    UnaryExpr,
+    VariableExpr,
+)
+from pylox.stmt import BaseStmt, BlockStmt, ExpressionStmt, PrintStmt, VarStmt
 from pylox.token import Token, TokenType
 
 
 class Interpreter:
     def __init__(self, exception_list: ExceptionList):
+        self.environment = Environment()
         self.exception_list = exception_list
 
-    def interpret(self, expr: BaseExpr) -> object:
+    def interpret(self, stmts: list[BaseStmt]):
         try:
-            value = self.evaluate(expr)
-            return value
+            for stmt in stmts:
+                self.execute(stmt)
         except PyloxRuntimeError as e:
             self.exception_list.append(e)
+
+    def visitAssignExpr(self, expr: AssignExpr) -> object:
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
+
+    def visitBlockStmt(self, stmt: BlockStmt):
+        self.execute_block(stmt.statements, Environment(self.environment))
+
+    def visitVarStmt(self, stmt: VarStmt):
+        value = None
+        if stmt.initializer is not None:
+            value = self.evaluate(stmt.initializer)
+
+        self.environment.define(stmt.name.lexeme, value)
+
+    def visitPrintStmt(self, stmt: PrintStmt):
+        value = self.evaluate(stmt.expression)
+        click.echo(value)
+
+    def visitExpressionStmt(self, stmt: ExpressionStmt):
+        self.evaluate(stmt.expression)
+
+    def visitVariableExpr(self, expr: VariableExpr) -> object:
+        return self.environment.get(expr.name)
 
     def visitLiteralExpr(self, expr: LiteralExpr) -> object:
         return expr.value
@@ -83,6 +121,21 @@ class Interpreter:
 
     def evaluate(self, expr: BaseExpr) -> object:
         return expr.accept(self)
+
+    def execute(self, stmt: BaseStmt):
+        return stmt.accept(self)
+
+    def execute_block(self, stmts: list[BaseStmt], environment: Environment):
+        prev_environment = self.environment
+        try:
+            self.environment = environment
+
+            for stmt in stmts:
+                self.execute(stmt)
+        except PyloxRuntimeError as e:
+            self.exception_list.append(e)
+        finally:
+            self.environment = prev_environment
 
     @staticmethod
     def is_truthy(obj: object) -> bool:

@@ -13,6 +13,7 @@ class Lox:
 
     def __init__(self):
         self.exception_list = ExceptionList([])
+        self.interpreter = Interpreter(self.exception_list)
 
     def run_prompt(self):
         """Run the pylox interactive prompt."""
@@ -32,11 +33,9 @@ class Lox:
         tokens = lexer.scan()
 
         parser = Parser(tokens, self.exception_list)
-        expr = parser.parse()
+        stmts = parser.parse()
 
-        interpreter = Interpreter(self.exception_list)
-        val = interpreter.interpret(expr)
-        click.echo(val)
+        self.interpreter.interpret(stmts)
 
     @classmethod
     def main(cls, script: Optional[TextIO]):
