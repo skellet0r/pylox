@@ -7,10 +7,11 @@ from pylox.expr import (
     BinaryExpr,
     GroupingExpr,
     LiteralExpr,
+    LogicalExpr,
     UnaryExpr,
     VariableExpr,
 )
-from pylox.stmt import BaseStmt, BlockStmt, ExpressionStmt, PrintStmt, VarStmt
+from pylox.stmt import BaseStmt, BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
 from pylox.token import Token, TokenType
 
 
@@ -62,13 +63,101 @@ class Parser:
         return VarStmt(name_token, initializer)
 
     def statement(self, token: Token) -> BaseStmt:
+        if token.token_type is TokenType.FOR:
+            return self.for_statement()
+
+        if token.token_type is TokenType.IF:
+            return self.if_statement()
+
         if token.token_type is TokenType.PRINT:
             return self.print_statement(self.consume())
+
+        if token.token_type is TokenType.WHILE:
+            return self.while_statement()
 
         if token.token_type is TokenType.LEFT_BRACE:
             return BlockStmt(self.block_statement())
 
         return self.expression_statement(token)
+
+    def for_statement(self) -> BaseStmt:
+        if (token := self.peek()).token_type is not TokenType.LEFT_PAREN:
+            raise SyntacticalError(token, "Expected '(' after 'for'.")
+        else:
+            self._current += 1
+
+        initializer = None
+        match (token := self.consume()).token_type:
+            case TokenType.SEMICOLON:
+                pass
+            case TokenType.VAR:
+                initializer = self.var_declaration(self.consume())
+            case _:
+                initializer = self.expression_statement(token)
+
+        condition = None
+        if (token := self.consume()).token_type is not TokenType.SEMICOLON:
+            condition = self.expression(token)
+            if (token := self.peek()).token_type is not TokenType.SEMICOLON:
+                raise SyntacticalError(token, "Expected ';' after expression.")
+            self._current += 1
+
+        increment = None
+        if (token := self.consume()).token_type is not TokenType.RIGHT_PAREN:
+            increment = self.expression(token)
+            if (token := self.peek()).token_type is not TokenType.RIGHT_PAREN:
+                raise SyntacticalError(token, "Expected ')' after expression.")
+            self._current += 1
+
+        body = self.statement(self.consume())
+
+        if increment is not None:
+            body = BlockStmt([body, increment])
+
+        if condition is None:
+            condition = LiteralExpr(True)
+        body = WhileStmt(condition, body)
+
+        if initializer is not None:
+            body = BlockStmt([initializer, body])
+
+        return body
+
+    def while_statement(self) -> BaseStmt:
+        if (token := self.peek()).token_type is not TokenType.LEFT_PAREN:
+            raise SyntacticalError(token, "Expected '(' after 'while'.")
+        else:
+            self._current += 1
+
+        condition = self.expression(self.consume())
+
+        if (token := self.peek()).token_type is not TokenType.RIGHT_PAREN:
+            raise SyntacticalError(token, "Expected ')' after condition.")
+        else:
+            self._current += 1
+
+        body = self.statement(self.consume())
+
+        return WhileStmt(condition, body)
+
+    def if_statement(self) -> BaseStmt:
+        if (token := self.peek()).token_type is not TokenType.LEFT_PAREN:
+            raise SyntacticalError(token, "Expected '(' after 'if'.")
+        self._current += 1  # consume
+
+        condition = self.expression(self.consume())
+
+        if (token := self.peek()).token_type is not TokenType.RIGHT_PAREN:
+            raise SyntacticalError(token, "Expected '(' after 'if'.")
+        self._current += 1  # consume
+
+        then_branch = self.statement(self.consume())
+        else_branch = None
+        if (token := self.peek()).token_type is TokenType.ELSE:
+            self._current += 1
+            else_branch = self.statement(self.consume())
+
+        return IfStmt(condition, then_branch, else_branch)
 
     def block_statement(self) -> list[BaseStmt]:
         statements = []
@@ -102,7 +191,7 @@ class Parser:
         return self.assignment(token)
 
     def assignment(self, token: Token) -> BaseExpr:
-        expr = self.equality(token)
+        expr = self.or_(token)
 
         if (next_token := self.peek()).token_type is TokenType.EQUAL:
             equals = self.consume()
@@ -113,6 +202,26 @@ class Parser:
                 return AssignExpr(name, value)
 
             raise SyntacticalError(equals, "Invalid assignment target.")
+
+        return expr
+
+    def or_(self, token: Token) -> BaseExpr:
+        expr = self.and_(token)
+
+        while (self.peek()).token_type is TokenType.OR:
+            operator = self.consume()
+            right = self.and_(self.consume())
+            expr = LogicalExpr(expr, operator, right)
+
+        return expr
+
+    def and_(self, token: Token) -> BaseExpr:
+        expr = self.equality(token)
+
+        while (self.peek()).token_type is TokenType.AND:
+            operator = self.consume()
+            right = self.equality(self.consume())
+            expr = LogicalExpr(expr, operator, right)
 
         return expr
 

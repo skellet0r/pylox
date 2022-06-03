@@ -33,7 +33,7 @@ class Lox:
         tokens = lexer.scan()
 
         parser = Parser(tokens, self.exception_list)
-        stmts = parser.parse()
+        stmts = [stmt for stmt in parser.parse() if stmt is not None]
 
         self.interpreter.interpret(stmts)
 

@@ -29,3 +29,16 @@ class VarStmt(BaseStmt):
 @dataclass(slots=True)
 class BlockStmt(BaseStmt):
     statements: list[BaseStmt]
+
+
+@dataclass(slots=True)
+class IfStmt(BaseStmt):
+    condition: BaseExpr
+    then_branch: BaseStmt
+    else_branch: BaseStmt
+
+
+@dataclass(slots=True)
+class WhileStmt(BaseStmt):
+    condition: BaseExpr
+    body: BaseStmt

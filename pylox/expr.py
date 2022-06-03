@@ -41,3 +41,10 @@ class VariableExpr(BaseExpr):
 class AssignExpr(BaseExpr):
     name: Token
     value: BaseExpr
+
+
+@dataclass(slots=True)
+class LogicalExpr(BaseExpr):
+    left: BaseExpr
+    operator: Token
+    right: BaseExpr

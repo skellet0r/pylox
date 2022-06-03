@@ -10,10 +10,11 @@ from pylox.expr import (
     BinaryExpr,
     GroupingExpr,
     LiteralExpr,
+    LogicalExpr,
     UnaryExpr,
     VariableExpr,
 )
-from pylox.stmt import BaseStmt, BlockStmt, ExpressionStmt, PrintStmt, VarStmt
+from pylox.stmt import BaseStmt, BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
 from pylox.token import Token, TokenType
 
 
@@ -28,6 +29,28 @@ class Interpreter:
                 self.execute(stmt)
         except PyloxRuntimeError as e:
             self.exception_list.append(e)
+
+    def visitLogicalExpr(self, expr: LogicalExpr) -> object:
+        left = self.evaluate(expr.left)
+
+        if expr.operator.token_type is TokenType.OR:
+            if self.is_truthy(left):
+                return left
+        else:
+            if not self.is_truthy(left):
+                return left
+
+        return self.evaluate(expr.right)
+
+    def visitWhileStmt(self, stmt: WhileStmt):
+        while self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.body)
+
+    def visitIfStmt(self, stmt: IfStmt):
+        if self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            self.execute(stmt.else_branch)
 
     def visitAssignExpr(self, expr: AssignExpr) -> object:
         value = self.evaluate(expr.value)
